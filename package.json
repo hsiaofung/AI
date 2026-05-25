@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "dependencies": {
+    "@ai-sdk/xai": "^3.0.89",
+    "ai": "^6.0.180",
+    "dotenv": "^17.4.2",
+    "fs": "^0.0.1-security"
+  }
+}
