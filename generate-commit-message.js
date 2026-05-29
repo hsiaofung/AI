@@ -27,6 +27,37 @@ const { createXai } = require('@ai-sdk/xai')
 const { generateText } = require('ai')
 const { execSync } = require('child_process')
 
+/**
+ * 將文字按最大長度自動換行（簡單實作）
+ */
+function wrapText(text, maxLength = 100) {
+  const lines = text.split('\n')
+  const wrapped = []
+
+  for (let line of lines) {
+    if (line.length <= maxLength) {
+      wrapped.push(line)
+      continue
+    }
+
+    // 簡單斷行（以空格為斷點）
+    const words = line.split(' ')
+    let currentLine = ''
+
+    for (let word of words) {
+      if (currentLine.length + word.length + 1 <= maxLength) {
+        currentLine += (currentLine ? ' ' : '') + word
+      } else {
+        if (currentLine) wrapped.push(currentLine)
+        currentLine = word
+      }
+    }
+    if (currentLine) wrapped.push(currentLine)
+  }
+
+  return wrapped.join('\n')
+}
+
 async function generateCommitMessage() {
   // ...（保持你原本的 git diff + generateText 部分）
   let gitSummary = ''
@@ -46,14 +77,26 @@ async function generateCommitMessage() {
   const xai = createXai({ apiKey: process.env.XAI_API_KEY })
 
   const { text } = await generateText({
-    model: xai('grok-3'),
-    prompt: `你是一位專業工程師，請根據以下 git diff 產生 Conventional Commits 格式的 commit message。\n\nGit diff:\n${gitSummary}`,
+    model: xai('grok-4.3'),
+    prompt: `你是一位專業的前端工程師，請根據以下 git diff 產生符合 Conventional Commits 格式的 commit message。
+             要求：
+               1. 第一行（subject）控制在 72 個字元以內
+               2. 第一行後必須空一行
+               3. Body 的每一行**不能超過 100 個字元**，如果太長請自動換行
+               4. 使用 "- " 作為 bullet point
+               5. 內容清晰、專業、簡潔
+
+             Git diff:
+             ${gitSummary}`,
     maxTokens: 800,
     temperature: 0.3,
   })
 
+  // 後處理：確保每一行不超過 100 字元
+  const finalMessage = wrapText(text, 100)
+
   console.log('\n=== 建議的 Commit Message ===\n')
-  console.log(text)
+  console.log(finalMessage)
 }
 
 generateCommitMessage().catch(console.error)
